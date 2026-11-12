@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kasir Café</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f6f1e9;color:#35251c}
+header{background:#40291e;color:white;padding:20px 5%;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:24px}
+header span{font-size:13px;color:#e5c9a8}
+nav{display:flex;gap:10px}
+button{cursor:pointer;border:0;border-radius:9px;padding:11px 15px;font-weight:bold}
+nav button{background:#65432f;color:white}
+nav button.active{background:#d7a56d;color:#2c1b12}
+.container{padding:25px 5%;max-width:1400px;margin:auto}
+.layout{display:grid;grid-template-columns:1fr 360px;gap:22px}
+h2{margin-bottom:15px}
+.categories{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:20px}
+.categories button{background:#e8dccd;color:#543927}
+.categories button.active{background:#754b32;color:white}
+.products{display:grid;grid-template-columns:repeat(3,1fr);gap:15px}
+.product{background:white;padding:15px;border-radius:14px;box-shadow:0 3px 12px #0000000c}
+.product .emoji{font-size:45px;background:#f4eadd;border-radius:10px;text-align:center;padding:15px;margin-bottom:12px}
+.product h3{font-size:16px;margin-bottom:6px}
+.price{color:#93613e;font-weight:bold;margin:8px 0 12px}
+.add{width:100%;background:#68432e;color:white}
+.cart{background:white;padding:20px;border-radius:14px;height:fit-content;box-shadow:0 3px 12px #0000000c}
+.cart h2{display:flex;justify-content:space-between}
+.cart-item{padding:13px 0;border-bottom:1px solid #eee;display:flex;justify-content:space-between;gap:10px}
+.cart-item small{color:#98745b}
+.qty{display:flex;align-items:center;gap:8px;margin-top:7px}
+.qty button{padding:5px 9px;background:#eee}
+.total{display:flex;justify-content:space-between;margin-top:15px}
+.grand{font-size:20px;font-weight:bold;border-top:1px solid #ddd;padding-top:15px}
+.payment{margin-top:15px}
+input,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:8px;margin-top:8px}
+.pay{background:#68432e;color:white;width:100%;margin-top:15px}
+.clear{background:#eee;color:#543927;width:100%;margin-top:8px}
+.empty{text-align:center;color:#999;padding:30px 0}
+.page{display:none}
+.page.active{display:block}
+.history{background:white;padding:18px;border-radius:12px;margin-bottom:12px}
+.history button{background:#eee;margin-top:10px}
+@media(max-width:850px){
+.layout{grid-template-columns:1fr}
+.products{grid-template-columns:repeat(2,1fr)}
+.cart{order:2}
+}
+@media(max-width:450px){
+.products{grid-template-columns:1fr 1fr;gap:9px}
+.product{padding:10px}
+.product .emoji{font-size:32px}
+header h1{font-size:19px}
+.container{padding:18px 4%}
+}
+@media print{
+body *{visibility:hidden}
+#receipt,#receipt *{visibility:visible}
+#receipt{position:absolute;left:0;top:0;width:100%;padding:20px}
+}
+</style>
+</head>
+<body>
+
+<header>
+ <div>
+  <h1>☕ KOPI KITA</h1>
+  <span>CAFÉ & COFFEE SHOP</span>
+ </div>
+ <nav>
+  <button class="active" onclick="showPage('kasir',this)">Kasir</button>
+  <button onclick="showPage('laporan',this)">Laporan</button>
+ </nav>
+</header>
+
+<div class="container">
+
+<section id="kasir" class="page active">
+ <div class="layout">
+  <div>
+   <h2>Menu Café</h2>
+   <div class="categories" id="categories"></div>
+   <div class="products" id="products"></div>
+  </div>
+
+  <div class="cart">
+   <h2>Keranjang <span>🛒</span></h2>
+   <div id="cartItems"><div class="empty">Belum ada pesanan</div></div>
+
+   <div class="total">
+    <span>Subtotal</span><b id="subtotal">Rp0</b>
+   </div>
+   <div class="total">
+    <span>Pajak (10%)</span><b id="tax">Rp0</b>
+   </div>
+   <div class="total grand">
+    <span>Total</span><span id="total">Rp0</span>
+   </div>
+
+   <div class="payment">
+    <label>Metode pembayaran</label>
+    <select id="method">
+     <option>Tunai</option>
+     <option>QRIS</option>
+     <option>Transfer</option>
+    </select>
+    <label>Uang diterima (Rp)</label>
+    <input id="cash" type="number" placeholder="Masukkan nominal">
+    <button class="pay" onclick="checkout()">BAYAR SEKARANG</button>
+    <button class="clear" onclick="clearCart()">Kosongkan keranjang</button>
+   </div>
+  </div>
+ </div>
+</section>
+
+<section id="laporan" class="page">
+ <h2>Laporan Penjualan</h2>
+ <div class="history">
+  <p>Total transaksi: <b id="count">0</b></p>
+  <p style="margin-top:10px">Total pendapatan: <b id="revenue">Rp0</b></p>
+ </div>
+ <div id="history"></div>
+</section>
+</div>
+
+<div id="receipt" style="display:none"></div>
+
+<script>
+const menu=[
+ {id:1,name:"Espresso",price:18000,cat:"Coffee",emoji:"☕"},
+ {id:2,name:"Americano",price:20000,cat:"Coffee",emoji:"🖤"},
+ {id:3,name:"Cappuccino",price:25000,cat:"Coffee",emoji:"☕"},
+ {id:4,name:"Cafe Latte",price:26000,cat:"Coffee",emoji:"🥛"},
+ {id:5,name:"Kopi Susu Gula Aren",price:23000,cat:"Coffee",emoji:"🧋"},
+ {id:6,name:"Caramel Macchiato",price:29000,cat:"Coffee",emoji:"🍮"},
+ {id:7,name:"Matcha Latte",price:27000,cat:"Non Coffee",emoji:"🍵"},
+ {id:8,name:"Chocolate",price:24000,cat:"Non Coffee",emoji:"🍫"},
+ {id:9,name:"Lemon Tea",price:18000,cat:"Non Coffee",emoji:"🍋"},
+ {id:10,name:"Red Velvet",price:26000,cat:"Non Coffee",emoji:"🥤"},
+ {id:11,name:"French Fries",price:20000,cat:"Food",emoji:"🍟"},
+ {id:12,name:"Chicken Burger",price:30000,cat:"Food",emoji:"🍔"},
+ {id:13,name:"Croissant",price:22000,cat:"Food",emoji:"🥐"},
+ {id:14,name:"Chicken Sandwich",price:28000,cat:"Food",emoji:"🥪"},
+ {id:15,name:"Cheesecake",price:27000,cat:"Food",emoji:"🍰"}
+];
+
+let cart=[];
+let category="Semua";
+let sales=JSON.parse(localStorage.getItem("cafeSales")||"[]");
+
+const rupiah=n=>"Rp"+Number(n).toLocaleString("id-ID");
+
+function renderCategories(){
+ const cats=["Semua","Coffee","Non Coffee","Food"];
+ document.getElementById("categories").innerHTML=cats.map(c=>
+ `<button class="${category===c?'active':''}" onclick="filterCategory('${c}')">${c}</button>`
+ ).join("");
+}
+
+function filterCategory(c){
+ category=c;renderCategories();renderProducts();
+}
+
+function renderProducts(){
+ const items=menu.filter(p=>category==="Semua"||p.cat===category);
+ document.getElementById("products").innerHTML=items.map(p=>`
+ <div class="product">
+  <div class="emoji">${p.emoji}</div>
+  <h3>${p.name}</h3>
+  <div class="price">${rupiah(p.price)}</div>
+  <button class="add" onclick="addCart(${p.id})">+ Tambah</button>
+ </div>`).join("");
+}
+
+function addCart(id){
+ const p=menu.find(x=>x.id===id);
+ const found=cart.find(x=>x.id===id);
+ if(found)found.qty++;
+ else cart.push({...p,qty:1});
+ renderCart();
+}
+
+function changeQty(id,delta){
+ const p=cart.find(x=>x.id===id);
+ if(!p)return;
+ p.qty+=delta;
+ if(p.qty<=0)cart=cart.filter(x=>x.id!==id);
+ renderCart();
+}
+
+function renderCart(){
+ const box=document.getElementById("cartItems");
+ if(!cart.length)box.innerHTML='<div class="empty">Belum ada pesanan</div>';
+ else box.innerHTML=cart.map(p=>`
+ <div class="cart-item">
+  <div><b>${p.name}</b><br><small>${rupiah(p.price)} × ${p.qty}</small>
+   <div class="qty">
+    <button onclick="changeQty(${p.id},-1)">−</button>
+    ${p.qty}
+    <button onclick="changeQty(${p.id},1)">+</button>
+   </div>
+  </div>
+  <b>${rupiah(p.price*p.qty)}</b>
+ </div>`).join("");
+
+ const sub=cart.reduce((s,p)=>s+p.price*p.qty,0);
+ const tax=Math.round(sub*0.10);
+ document.getElementById("subtotal").textContent=rupiah(sub);
+ document.getElementById("tax").textContent=rupiah(tax);
+ document.getElementById("total").textContent=rupiah(sub+tax);
+}
+
+function clearCart(){
+ cart=[];document.getElementById("cash").value="";
+ renderCart();
+}
+
+function checkout(){
+ if(!cart.length)return alert("Keranjang masih kosong!");
+
+ const sub=cart.reduce((s,p)=>s+p.price*p.qty,0);
+ const tax=Math.round(sub*.10);
+ const total=sub+tax;
+ const method=document.getElementById("method").value;
+ let cash=Number(document.getElementById("cash").value);
+
+ if(method!=="Tunai")cash=total;
+ if(method==="Tunai"&&cash<total)return alert("Uang pembayaran kurang!");
+
+ const transaction={
+  id:Date.now(),
+  date:new Date().toLocaleString("id-ID"),
+  items:cart.map(p=>({...p})),
+  sub,tax,total,cash,change:cash-total,method
+ };
+
+ sales.unshift(transaction);
+ localStorage.setItem("cafeSales",JSON.stringify(sales));
+ showReceipt(transaction);
+ clearCart();
+}
+
+function showReceipt(t){
+ const receipt=document.getElementById("receipt");
+ receipt.style.display="block";
+ receipt.innerHTML=`
+ <center><h2>KOPI KITA</h2>
+ <p>CAFÉ & COFFEE SHOP</p>
+ <p>Terima kasih sudah berkunjung!</p></center>
+ <hr><p>${t.date}</p><p>No. ${t.id}</p><hr>
+ ${t.items.map(p=>`<p>${p.name} x${p.qty} <span style="float:right">${rupiah(p.price*p.qty)}</span></p>`).join("")}
+ <hr><p>Subtotal: ${rupiah(t.sub)}</p>
+ <p>Pajak: ${rupiah(t.tax)}</p>
+ <h3>Total: ${rupiah(t.total)}</h3>
+ <p>Metode: ${t.method}</p>
+ <p>Dibayar: ${rupiah(t.cash)}</p>
+ <p>Kembalian: ${rupiah(t.change)}</p>
+ <hr><center>Terima kasih!</center>`;
+ window.print();
+ receipt.style.display="none";
+}
+
+function showPage(page,btn){
+ document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+ document.getElementById(page).classList.add("active");
+ document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+ if(page==="laporan")renderHistory();
+}
+
+function renderHistory(){
+ document.getElementById("count").textContent=sales.length;
+ document.getElementById("revenue").textContent=rupiah(sales.reduce((s,t)=>s+t.total,0));
+ document.getElementById("history").innerHTML=sales.length?sales.map(t=>`
+ <div class="history">
+ <b>Transaksi #${t.id}</b><br>
+ <small>${t.date}</small>
+ <p style="margin-top:8px">Total: <b>${rupiah(t.total)}</b></p>
+ <p>Metode: ${t.method}</p>
+ <button onclick="printOld(${t.id})">Cetak struk</button>
+ </div>`).join(""):'<p>Belum ada transaksi.</p>';
+}
+
+function printOld(id){
+ const t=sales.find(x=>x.id===id);
+ if(t)showReceipt(t);
+}
+
+renderCategories();
+renderProducts();
+renderCart();
+</script>
+</body>
+</html>
